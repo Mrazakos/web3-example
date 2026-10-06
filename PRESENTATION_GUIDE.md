@@ -130,28 +130,29 @@ Scroll down to the table at the bottom of the screen:
 
 ---
 
-## 🛠️ Part 4: How the Frontend Connects (3 Minutes)
+## 🛠️ Part 4: Frontend Web3 Service Architecture (3 Minutes)
 
-Show `frontend/src/App.vue` or explain the 3 essential Web3 frontend concepts:
+Open [`frontend/src/services/pitchContractService.ts`](frontend/src/services/pitchContractService.ts) side-by-side with [`contracts/CampusPitches.sol`](contracts/CampusPitches.sol).
 
-1. **The Provider (`BrowserProvider`)**:
-   ```javascript
-   const provider = new ethers.BrowserProvider(window.ethereum);
-   ```
-   > Reads data from the blockchain node (free, doesn't cost gas).
+Show students how clean the 1-to-1 mapping is between Solidity smart contract functions and typed TypeScript service methods:
 
-2. **The Signer (`provider.getSigner()`)**:
-   ```javascript
-   const signer = await provider.getSigner();
-   ```
-   > Represents the connected wallet. Used for state-mutating transactions that require cryptographic signing and gas.
+| Action | Solidity Smart Contract (`CampusPitches.sol`) | TypeScript Web3 Service (`pitchContractService.ts`) | Requires Gas? |
+| :--- | :--- | :--- | :--- |
+| **Fetch Ideas** | `function getAllPitches() external view returns (Pitch[])` | `await contract.getAllPitches()` | ❌ **Free** (read-only) |
+| **Submit Idea** | `function createPitch(string, string, string) external` | `await contract.createPitch(title, desc, cat)` | ⛽ **Yes** (state mutation) |
+| **Vote** | `function vote(uint256 _pitchId) external` | `await contract.vote(pitchId)` | ⛽ **Yes** (state mutation) |
+| **Send Tip/Grant** | `function tipPitch(uint256, string) external payable` | `await contract.tipPitch(id, msg, { value: parseEther(amt) })` | ⛽ **Yes** (+ native ETH) |
 
-3. **The Contract Instance (`ethers.Contract`)**:
-   ```javascript
-   const contract = new ethers.Contract(contractAddress, ABI, signer);
-   await contract.createPitch("Title", "Description", "Category");
-   ```
-   > Synthesizes contract methods into simple JavaScript functions using the auto-generated ABI (Application Binary Interface).
+### Key Code Highlights to Show in the Architecture:
+1. **`providerService.ts` (<100 lines)**:
+   - `getBrowserProvider()`: Connects to MetaMask's injected `window.ethereum` RPC provider.
+   - `connectWallet()`: Prompts MetaMask account connection and returns balance and chain ID.
+   - `switchOrAddHardhatNetwork()`: Automates EIP-3085/3326 network switching to localhost.
+2. **`pitchContractService.ts` (<150 lines)**:
+   - `createPitch()` / `vote()` / `tipPitch()`: Requests MetaMask to sign state-mutating transactions with private key.
+   - `tx.wait()`: Explains block mining! Pauses execution until the Hardhat miner packages the transaction into a block and returns the receipt with `gasUsed` and `blockNumber`.
+3. **`types/index.ts`**:
+   - Demonstrates strong domain modeling (`Pitch`, `Tip`, `TxLogEntry`, `ConnectedWallet`) bridging EVM structs to TypeScript interfaces.
 
 ---
 
